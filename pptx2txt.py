@@ -21,10 +21,11 @@
 # REQUIREMENTS
 # ============
 # - Python 3.13+
+# - Library: python-pptx
 #
 # SETUP & USAGE
 # =============
-# Please see the readme.txt file that ships with this script.
+# Please see the readme.txt file that ships with this Python script.
 
 
 import os

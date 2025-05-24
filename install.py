@@ -24,7 +24,7 @@
 #
 # SETUP & USAGE
 # =============
-# Please see the readme.txt file that ships with this python file.
+# Please see the readme.txt file that ships with this Python script.
 
 
 import os
@@ -58,9 +58,9 @@ else:  # Unix/macOS
 
 # Install packages into the venv
 subprocess.run([pip_path, "install"] + packages)
-print(f"Virtual environment created in '{venv_dir_path}' with package(s): {', '.join(packages)}")
+print(f"venv created in '{venv_dir_path}' with package(s): {', '.join(packages)}")
 
-# Copy the solution files into the root of the virtual environment
+# Copy the solution files into the root of the venv
 files_to_copy: list = ["pptx2txt.py", "readme.txt"]
 for file_name in files_to_copy:
     source_dir_path: str = os.path.dirname(os.path.abspath(__file__))
@@ -70,4 +70,4 @@ for file_name in files_to_copy:
     print(f"Copied {source_file_path} to {target_file_path}")
 
 # Tell the user installation is complete
-print("PPTX installation complete")
+print("PPTX2TXT installation complete")
