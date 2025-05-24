@@ -90,15 +90,19 @@ The .txt file is divided into sections for each slide. Within a slide's section,
 
 	[LAYOUT TABLE] - A layout element that is a table
 
+	[NOTES] - Text from the notes pane of a slide
+
 	[MASTER] - An element from the presentation's slide master
 
 ++
 
 LIMITATIONS
 
-PPTX2TXT extracts editable text from shapes and tables in the presentation. However, it cannot extract text that is part of a graphic (e.g., text within a logo graphic).
+- PPTX2TXT cannot extract text that is part of a graphic (e.g., text within a logo).
 
-Where a slide contains an empty layout element (e.g., an unused footer), the .txt file may contain entries like this:
+- PPTX2TXT cannot yet extract the text from comments and replies.
+
+- Where a slide contains an empty layout element (e.g., an unused footer), the .txt file may contain 'empty' entries like this:
 
 	[LAYOUT]
 

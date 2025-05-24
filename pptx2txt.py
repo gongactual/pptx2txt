@@ -4,7 +4,7 @@
 #
 # VERSION
 # =======
-# 1.0.0 | 24 May 2025
+# 1.0.0 | 25 May 2025
 #
 # COPYRIGHT STATEMENT
 # ===================
@@ -91,10 +91,13 @@ def extract_text_from_pptx(pptx_file_path: str, add_slide_numbers: bool = True,
     for i, slide in enumerate(input_presentation.slides, start=1):
         if add_slide_numbers:
             text_output.append(("=" * 50) + f" [SLIDE {i}] " + ("=" * 50))
-        # layout = slide.slide_layout
         for label, layer in [["SHAPE", slide.shapes], ["LAYOUT", slide.slide_layout.shapes]]:
             layer_text = extract_text_from_shapes(layer, label)
             text_output.append(layer_text)
+        notes_slide = slide.notes_slide
+        if notes_slide and notes_slide.notes_text_frame:
+            notes = notes_slide.notes_text_frame.text.strip()
+            text_output.append(f"[NOTES] " + notes)
 
     if include_master:
         text_output.append(("=" * 50) + f" [SLIDE MASTER] " + ("=" * 50))
