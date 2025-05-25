@@ -1,7 +1,9 @@
+========
 PPTX2TXT
 ========
 
 OVERVIEW
+========
 
 PPTX2TXT is a simple Python script that extracts all text from a .pptx file and saves it as a .txt file (with the same name as the .pptx file) in the same directory as the .pptx file.
 
@@ -9,9 +11,9 @@ The .txt file contains separators to indicate which slide content has come from,
 
 Microsoft PowerPoint no longer includes a feature for comparing presentations to highlight differences. With PPTX2TXT, you can extract the text from two different versions of a presentation, and then use a diff tool (e.g., WinMerge on PC) to identify differences.
 
-++
 
 REQUIREMENTS
+============
 
 - Python 3.13+ 
 - Library: python-pptx
@@ -20,9 +22,9 @@ If you already have Python 3.13+ installed on your computer, you can simply add 
 
 To save you time, an interactive Python script has been provided that will automatically create a venv, adding the required libraries and solution scripts. 
 
-++
 
 INSTALLATION
+============
 
 1. Ensure Python 3.13+ is installed on your system (download from https://www.python.org/).
 
@@ -39,9 +41,9 @@ INSTALLATION
 
 6. When you see the message "PPTX2TXT installation complete" in the cmd/terminal window, PPTX2TXT is ready to use.
 
-++
 
 USAGE
+=====
 
 1. In a cmd/terminal window, navigate to the venv directory.
 
@@ -76,9 +78,9 @@ When the venv is deactivated your cmd/terminal prompt will look similar to this:
 	PC:	C:\venv_ppt2txt>
 	MacOS:	you@your-mac venv_ppt2txt %
 
-++
 
 WHAT'S IN THE TEXT FILE
+=======================
 
 The .txt file is divided into sections for each slide. Within a slide's section, text extracted from each shape is presented in its own line or paragraph. A label at the start of each line or paragraph indicates the type of shape from which the text was extracted:
 
@@ -94,9 +96,9 @@ The .txt file is divided into sections for each slide. Within a slide's section,
 
 	[MASTER] - An element from the presentation's slide master
 
-++
 
 LIMITATIONS
+===========
 
 - PPTX2TXT cannot extract text that is part of a graphic (e.g., text within a logo).
 
@@ -106,10 +108,11 @@ LIMITATIONS
 
 	[LAYOUT]
 
-++
 
 CREDITS
+=======
 
+Version: 1.0.0 | 25 May 2025
 This script was created by Oxzeon Limited (oxzeon.com) with assistance from ChatGPT.
 No copyright is asserted - please use/modify/redistribute as you wish.
 CAUTION: Use entirely at your own risk.
