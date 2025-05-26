@@ -96,6 +96,8 @@ The .txt file is divided into sections for each slide. Within a slide's section,
 
 	[MASTER] - An element from the presentation's slide master
 
+NOTE: For tables, cell texts are tab-separated so you can copy/paste the whole block into Excel. However, within an individual cell's text, all carriage returns have been replaced with triple spaces (allowing you to use search-and-replace to restore the carriage returns).
+
 
 LIMITATIONS
 ===========
@@ -112,7 +114,7 @@ LIMITATIONS
 CREDITS
 =======
 
-Version: 1.0.0 | 25 May 2025
+Version: 1.1.0 | 26 May 2025
 This script was created by Oxzeon Limited (oxzeon.com) with assistance from ChatGPT.
 No copyright is asserted - please use/modify/redistribute as you wish.
 CAUTION: Use entirely at your own risk.

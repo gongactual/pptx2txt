@@ -4,7 +4,7 @@
 #
 # VERSION
 # =======
-# 1.0.0 | 25 May 2025
+# 1.1.0 | 26 May 2025
 #
 # COPYRIGHT STATEMENT
 # ===================
@@ -58,9 +58,17 @@ def extract_text_from_shapes(shapes: list, label: str) -> str:
             text_output.append(f"[{label}] " + shape.text)
         if shape.has_table:
             table = shape.table
+            table_rows: list = list()
             for row in table.rows:
-                row_text = [cell.text.strip() for cell in row.cells]
-                text_output.append(f"[{label} TABLE] " + "\t".join(row_text))
+                row_cells: list = list()
+                for cell in row.cells:
+                    if len(cell.text.strip()) != 0:
+                        row_cells.append(cell.text.strip().replace("\n", "   "))
+                    else:
+                        row_cells.append(" ")
+                row_text: str = "\t".join(row_cells)
+                table_rows.append(row_text)
+            text_output.append(f"[{label} TABLE]\n" + "\n".join(table_rows))
 
     return "\n\n".join(text_output)
 
