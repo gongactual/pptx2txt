@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "python-pptx",
+# ]
+# ///
+
 # ========
 # PPTX2TXT
 # ========
