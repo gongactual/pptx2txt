@@ -1,10 +1,10 @@
-# ======================
-# INSTALL (FOR PPTX2TXT)
-# ======================
+# =========================================
+# INSTALL (FOR PPTX2TXT AND MULTI PPTX2TXT)
+# =========================================
 #
 # VERSION
 # =======
-# 1.0.0 | 24 May 2025
+# 1.1.0 | 16 June 2025
 #
 # COPYRIGHT STATEMENT
 # ===================
@@ -16,7 +16,7 @@
 # OVERVIEW
 # ========
 # This script asks the user to select a directory, then creates a new Python venv (virtual environment) in
-# that location, installing all required Python libraries and files to run PPTX2TXT.
+# that location, installing all required Python libraries and files to run PPTX2TXT and MULTI PPTX2TXT.
 #
 # REQUIREMENTS
 # ============
@@ -61,7 +61,7 @@ subprocess.run([pip_path, "install"] + packages)
 print(f"venv created in '{venv_dir_path}' with package(s): {', '.join(packages)}")
 
 # Copy the solution files into the root of the venv
-files_to_copy: list = ["pptx2txt.py", "readme.txt"]
+files_to_copy: list = ["pptx2txt.py", "multi_pptx2txt.py", "readme.txt"]
 for file_name in files_to_copy:
     source_dir_path: str = os.path.dirname(os.path.abspath(__file__))
     source_file_path: str = os.path.join(source_dir_path, file_name)
