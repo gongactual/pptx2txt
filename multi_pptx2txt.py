@@ -5,13 +5,13 @@
 # ]
 # ///
 
-# ========
-# PPTX2TXT
-# ========
+# ==============
+# MULTI_PPTX2TXT
+# ==============
 #
 # VERSION
 # =======
-# 1.1.0 | 26 May 2025
+# 1.0.0 | 16 June 2025
 #
 # COPYRIGHT STATEMENT
 # ===================
@@ -22,8 +22,8 @@
 #
 # OVERVIEW
 # ========
-# This script asks the user to select a .pptx file, extracts all text from the presentation, then saves the text
-# in a .txt file (with the same name as the .pptx file) in the same directory as the .pptx file.
+# This script asks the user to select a directory, extracts all text from all .pptx files in that directory,
+# then saves the text in individual .txt files (with the same names as the .pptx files) in the same directory.
 #
 # REQUIREMENTS
 # ============
@@ -37,9 +37,10 @@
 
 import os
 import tkinter
+import glob
 
 from pptx import Presentation
-from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askdirectory
 
 
 def extract_text_from_shapes(shapes: list, label: str) -> str:
@@ -139,21 +140,56 @@ def save_text_to_file(txt_content: str, txt_file_path: str):
     None
     """
     if os.path.isfile(txt_file_path):
-        exit("ERROR Output .txt file already exists - please delete it and try again")
+        print(f"WARNING: Output .txt file already exists, skipping: {txt_file_path}")
+        return
     with open(txt_file_path, "w", encoding="utf-8") as f:
         f.write(txt_content)
 
 
-# Ask the user to select the input .pptx file
+# Ask the user to select the input directory
 root = tkinter.Tk()
-print("\nSelect .pptx file (see file explorer/finder prompt)")
-input_pptx_file_path = askopenfilename(filetypes=(('PowerPoint files', '*.pptx'), ))
-print(f"Input .pptx file path: {input_pptx_file_path}")
+print("\nSelect directory containing .pptx files (see file explorer/finder prompt)")
+input_directory_path = askdirectory()
+print(f"Input directory path: {input_directory_path}")
 root.destroy()
 
-# Extract text and save to .txt file
-output_txt_file_path: str = os.path.splitext(input_pptx_file_path)[0] + ".txt"
-print(f"Output .txt file path: {output_txt_file_path}")
-output_txt_content: str = extract_text_from_pptx(input_pptx_file_path)
-save_text_to_file(output_txt_content, output_txt_file_path)
-print("Output .txt file saved successfully")
+if not input_directory_path:
+    exit("ERROR: No directory selected")
+
+# Find all .pptx files in the selected directory
+pptx_files = glob.glob(os.path.join(input_directory_path, "*.pptx"))
+
+if not pptx_files:
+    exit("ERROR: No .pptx files found in the selected directory")
+
+print(f"Found {len(pptx_files)} .pptx file(s) to process")
+
+# Process each .pptx file
+processed_count = 0
+skipped_count = 0
+
+for pptx_file in pptx_files:
+    try:
+        print(f"\nProcessing: {os.path.basename(pptx_file)}")
+        
+        # Extract text and save to .txt file
+        output_txt_file_path: str = os.path.splitext(pptx_file)[0] + ".txt"
+        
+        if os.path.isfile(output_txt_file_path):
+            print(f"Skipping - output file already exists: {os.path.basename(output_txt_file_path)}")
+            skipped_count += 1
+            continue
+            
+        output_txt_content: str = extract_text_from_pptx(pptx_file)
+        save_text_to_file(output_txt_content, output_txt_file_path)
+        print(f"Successfully created: {os.path.basename(output_txt_file_path)}")
+        processed_count += 1
+        
+    except Exception as e:
+        print(f"ERROR processing {os.path.basename(pptx_file)}: {str(e)}")
+        skipped_count += 1
+
+print(f"\n=== PROCESSING COMPLETE ===")
+print(f"Files processed successfully: {processed_count}")
+print(f"Files skipped/failed: {skipped_count}")
+print(f"Total files found: {len(pptx_files)}")
