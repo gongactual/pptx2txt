@@ -6,7 +6,7 @@
 # ///
 
 # ==============
-# MULTI PPTX2TXT
+# MULTI_PPTX2TXT
 # ==============
 #
 # VERSION
