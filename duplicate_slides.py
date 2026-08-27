@@ -24,11 +24,13 @@
 # ========
 # This script opens a .pptx file, scans every slide for a shape whose text is wrapped in
 # double square brackets (e.g. "[[Divider]]"), and builds an index mapping each such label to
-# the slide that carries it. Using a constant list of labels (SLIDE_LABELS_TO_DUPLICATE, below),
-# it duplicates the corresponding slides - including independent copies of their notes and any
-# chart-related content, so edits to a duplicate never affect the original - and prepends the
-# duplicates to the front of the deck, in the order given by the constant list. The result is
-# saved to a new .pptx file.
+# the slide that carries it. It also reads a JSON file (e.g. demo.json) containing a "slides"
+# array, where each entry has a "layout" value naming one of these labels; the ordered list of
+# "layout" values (duplicates allowed) becomes the list of slides to duplicate. It duplicates
+# the corresponding slides - including independent copies of their notes and any chart-related
+# content, so edits to a duplicate never affect the original - and prepends the duplicates to
+# the front of the deck, in the order given by the JSON file. The result is saved to a new
+# .pptx file. This script ignores Any "content" field on a JSON slide entry.
 #
 # Slide duplication is done by unzipping the .pptx (which is just a zip archive of XML parts)
 # and manipulating the relevant XML/relationship files directly, since python-pptx has no
@@ -42,10 +44,11 @@
 #
 # USAGE
 # =====
-# python duplicate_slides.py <input.pptx> <output.pptx>
+# python duplicate_slides.py <slides.json> <input.pptx> <output.pptx>
 
 
 import argparse
+import json
 import os
 import posixpath
 import re
@@ -56,13 +59,6 @@ from xml.sax.saxutils import quoteattr
 
 from pptx import Presentation
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
-
-
-# List of slide labels (the text found between "[[" and "]]" on a shape) to duplicate and
-# place at the start of the deck, in the order given here.
-SLIDE_LABELS_TO_DUPLICATE: list[str] = [
-    "title", "alpha"
-]
 
 
 # Relationship types whose target part is exclusively "owned" by its referencing part and must
@@ -117,6 +113,36 @@ def build_label_index(prs: Presentation) -> dict[str, str]:
                     label_index[label] = slide.part.partname.lstrip("/")
 
     return label_index
+
+
+def load_labels_from_json(json_path: str) -> list[str]:
+    """
+    Reads a JSON file (e.g. demo.json) containing a "slides" array and returns the ordered list
+    of "layout" values from it - this becomes the list of slide labels to duplicate, in order
+    (duplicates allowed - each occurrence produces its own independent copy).
+
+    Parameters
+    ----------
+    json_path : str
+        Path to the JSON file
+
+    Returns
+    -------
+    list[str]
+        Ordered list of "layout" values, one per entry in the "slides" array
+    """
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if "slides" not in data or not isinstance(data["slides"], list):
+        raise ValueError(f"JSON file must contain a 'slides' array: {json_path}")
+
+    labels: list[str] = []
+    for i, entry in enumerate(data["slides"]):
+        if "layout" not in entry:
+            raise ValueError(f"slides[{i}] is missing a 'layout' key in {json_path}")
+        labels.append(entry["layout"])
+    return labels
 
 
 def split_numbered_name(partname: str) -> tuple[str, str, str, int]:
@@ -489,19 +515,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Duplicate labeled slides in a .pptx and prepend them to the deck."
     )
+    parser.add_argument("json_file", help="Path to a JSON file listing slides by layout label (e.g. demo.json)")
     parser.add_argument("input_pptx", help="Path to the source .pptx file")
     parser.add_argument("output_pptx", help="Path to save the new .pptx file to")
     args = parser.parse_args()
 
+    if not os.path.isfile(args.json_file):
+        sys.exit(f"ERROR: JSON file not found: {args.json_file}")
     if not os.path.isfile(args.input_pptx):
         sys.exit(f"ERROR: Input .pptx file not found: {args.input_pptx}")
     if os.path.isfile(args.output_pptx):
         sys.exit("ERROR Output .pptx file already exists - please delete it and try again")
 
+    try:
+        labels_to_duplicate = load_labels_from_json(args.json_file)
+    except (json.JSONDecodeError, ValueError, OSError) as e:
+        sys.exit(f"ERROR: could not read JSON file {args.json_file}: {e}")
+
     prs = Presentation(args.input_pptx)
     label_index = build_label_index(prs)
 
-    missing_labels: list = [label for label in SLIDE_LABELS_TO_DUPLICATE if label not in label_index]
+    missing_labels: list = [label for label in labels_to_duplicate if label not in label_index]
     if missing_labels:
         sys.exit(f"ERROR: label(s) not found in presentation: {', '.join(missing_labels)}")
 
@@ -510,7 +544,7 @@ def main() -> None:
         counters = build_number_counters(zip_in.namelist())
 
         new_slide_partnames, staged_parts, new_overrides = duplicate_labeled_slides(
-            zip_in, SLIDE_LABELS_TO_DUPLICATE, label_index, content_type_overrides,
+            zip_in, labels_to_duplicate, label_index, content_type_overrides,
             content_type_defaults, counters
         )
 
@@ -543,12 +577,12 @@ def main() -> None:
         sys.exit(f"ERROR: output .pptx failed integrity check at: {bad_entry}")
 
     verify_prs = Presentation(args.output_pptx)
-    expected_count = len(prs.slides) + len(SLIDE_LABELS_TO_DUPLICATE)
+    expected_count = len(prs.slides) + len(labels_to_duplicate)
     actual_count = len(verify_prs.slides)
     if actual_count != expected_count:
         sys.exit(f"ERROR: output .pptx has {actual_count} slide(s), expected {expected_count}")
 
-    print(f"Duplicated {len(SLIDE_LABELS_TO_DUPLICATE)} slide(s) and saved to: {args.output_pptx}")
+    print(f"Duplicated {len(labels_to_duplicate)} slide(s) and saved to: {args.output_pptx}")
     print(f"Output deck now has {actual_count} slide(s) (was {len(prs.slides)})")
 
 
