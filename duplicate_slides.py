@@ -81,6 +81,10 @@ OWNED_RELATIONSHIP_TYPES = frozenset({
 CONTENT_TYPES_NS = "{http://schemas.openxmlformats.org/package/2006/content-types}"
 RELATIONSHIPS_NS = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 
+DML_NS_URI = "http://schemas.openxmlformats.org/drawingml/2006/main"
+PML_NS_URI = "http://schemas.openxmlformats.org/presentationml/2006/main"
+REL_NS_URI = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
 _TRAILING_NUMBER = re.compile(r"^(?P<prefix>.*?)(?P<num>\d+)(?P<ext>\.[^./]+)$")
 
 
@@ -115,11 +119,12 @@ def build_label_index(prs: Presentation) -> dict[str, str]:
     return label_index
 
 
-def load_labels_from_json(json_path: str) -> list[str]:
+def load_slide_specs_from_json(json_path: str) -> list[dict]:
     """
-    Reads a JSON file (e.g. demo.json) containing a "slides" array and returns the ordered list
-    of "layout" values from it - this becomes the list of slide labels to duplicate, in order
-    (duplicates allowed - each occurrence produces its own independent copy).
+    Reads a JSON file (e.g. demo.json) containing a "slides" array and returns it, validated.
+    Each entry has a "layout" value (the slide label to duplicate) and, optionally, a "content"
+    dict of placeholder-name -> replacement text to substitute into that duplicate. Order is
+    preserved (duplicates allowed - each occurrence produces its own independent copy).
 
     Parameters
     ----------
@@ -128,8 +133,8 @@ def load_labels_from_json(json_path: str) -> list[str]:
 
     Returns
     -------
-    list[str]
-        Ordered list of "layout" values, one per entry in the "slides" array
+    list[dict]
+        The "slides" array, one dict per entry, each guaranteed to have "layout"
     """
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -137,12 +142,69 @@ def load_labels_from_json(json_path: str) -> list[str]:
     if "slides" not in data or not isinstance(data["slides"], list):
         raise ValueError(f"JSON file must contain a 'slides' array: {json_path}")
 
-    labels: list[str] = []
     for i, entry in enumerate(data["slides"]):
         if "layout" not in entry:
             raise ValueError(f"slides[{i}] is missing a 'layout' key in {json_path}")
-        labels.append(entry["layout"])
-    return labels
+    return data["slides"]
+
+
+def apply_content_substitutions(slide_xml: bytes, content: dict[str, str]) -> bytes:
+    """
+    Replaces "[key]" placeholders with their values, for every key in `content`, anywhere they
+    appear within a slide's text. Placeholders are searched for at the paragraph level (joining
+    all of a paragraph's runs first) so a placeholder split across multiple runs - e.g. by
+    PowerPoint's autocorrect/spell-check - still matches; the paragraph's remaining runs are then
+    dropped in favour of a single run carrying the substituted text. Paragraphs with no matching
+    placeholder are left completely untouched. This also covers table cells, since PowerPoint
+    represents cell text with the same <a:p> paragraph element as ordinary text boxes.
+
+    Parameters
+    ----------
+    slide_xml : bytes
+        Raw XML content of a (already duplicated, independent) slide part
+    content : dict[str, str]
+        Mapping of placeholder name -> replacement text; "[name]" is searched for literally
+
+    Returns
+    -------
+    bytes
+        The slide XML with substitutions applied
+    """
+    for prefix, uri in (("a", DML_NS_URI), ("p", PML_NS_URI), ("r", REL_NS_URI)):
+        ET.register_namespace(prefix, uri)
+
+    root = ET.fromstring(slide_xml)
+    matched_keys: set[str] = set()
+
+    for paragraph in root.iter(f"{{{DML_NS_URI}}}p"):
+        runs = paragraph.findall(f"{{{DML_NS_URI}}}r")
+        if not runs:
+            continue
+
+        run_texts = [run.findtext(f"{{{DML_NS_URI}}}t", default="") for run in runs]
+        paragraph_text = "".join(run_texts)
+
+        new_text = paragraph_text
+        for key, value in content.items():
+            placeholder = f"[{key}]"
+            if placeholder in new_text:
+                matched_keys.add(key)
+                new_text = new_text.replace(placeholder, value)
+
+        if new_text != paragraph_text:
+            first_run_t = runs[0].find(f"{{{DML_NS_URI}}}t")
+            if first_run_t is None:
+                first_run_t = ET.SubElement(runs[0], f"{{{DML_NS_URI}}}t")
+            first_run_t.text = new_text
+            for extra_run in runs[1:]:
+                paragraph.remove(extra_run)
+
+    for key in content:
+        if key not in matched_keys:
+            print(f"WARNING: content key '{key}' had no matching '[{key}]' placeholder on the slide",
+                  file=sys.stderr)
+
+    return ET.tostring(root, encoding="UTF-8", xml_declaration=True)
 
 
 def split_numbered_name(partname: str) -> tuple[str, str, str, int]:
@@ -528,9 +590,10 @@ def main() -> None:
         sys.exit("ERROR Output .pptx file already exists - please delete it and try again")
 
     try:
-        labels_to_duplicate = load_labels_from_json(args.json_file)
+        slide_specs = load_slide_specs_from_json(args.json_file)
     except (json.JSONDecodeError, ValueError, OSError) as e:
         sys.exit(f"ERROR: could not read JSON file {args.json_file}: {e}")
+    labels_to_duplicate = [spec["layout"] for spec in slide_specs]
 
     prs = Presentation(args.input_pptx)
     label_index = build_label_index(prs)
@@ -547,6 +610,11 @@ def main() -> None:
             zip_in, labels_to_duplicate, label_index, content_type_overrides,
             content_type_defaults, counters
         )
+
+        for spec, new_partname in zip(slide_specs, new_slide_partnames):
+            content = spec.get("content", {})
+            if content:
+                staged_parts[new_partname] = apply_content_substitutions(staged_parts[new_partname], content)
 
         patched_rels, assigned_rids = patch_presentation_rels(
             zip_in.read("ppt/_rels/presentation.xml.rels"), new_slide_partnames
